@@ -1,0 +1,60 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28010.2026
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rd1212.app.Android", "Rd1212.app.Android\Rd1212.app.Android.csproj", "{0C077211-8E1A-4984-B3AC-D003F77BCF44}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rd1212.app", "Rd1212.app\Rd1212.app.csproj", "{E5CEEC89-56FB-402E-8461-E38C12A041EE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CodeBrix", "CodeBrix", "{9B5916FE-18FE-4265-9FE3-5FBB8F1DD63E}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CodeBrix.Prism", "..\..\..\CodeBrix_private\Source\Prism\CodeBrix.Prism\CodeBrix.Prism.csproj", "{870E33ED-6EE2-470A-8DEB-436593576168}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeBrix.Prism.Android", "..\..\..\CodeBrix_private\Source\Prism\CodeBrix.Prism.Android\CodeBrix.Prism.Android.csproj", "{2328735B-D8EC-4449-B46B-50C0378CF8D4}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CodeBrix.Prism.DryIoc", "..\..\..\CodeBrix_private\Source\Prism\CodeBrix.Prism.DryIoc\CodeBrix.Prism.DryIoc.csproj", "{101D3184-9F8F-41D7-B886-AF858131B749}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0C077211-8E1A-4984-B3AC-D003F77BCF44}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0C077211-8E1A-4984-B3AC-D003F77BCF44}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0C077211-8E1A-4984-B3AC-D003F77BCF44}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{0C077211-8E1A-4984-B3AC-D003F77BCF44}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0C077211-8E1A-4984-B3AC-D003F77BCF44}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0C077211-8E1A-4984-B3AC-D003F77BCF44}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{E5CEEC89-56FB-402E-8461-E38C12A041EE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5CEEC89-56FB-402E-8461-E38C12A041EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5CEEC89-56FB-402E-8461-E38C12A041EE}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{E5CEEC89-56FB-402E-8461-E38C12A041EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5CEEC89-56FB-402E-8461-E38C12A041EE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5CEEC89-56FB-402E-8461-E38C12A041EE}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{870E33ED-6EE2-470A-8DEB-436593576168}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{870E33ED-6EE2-470A-8DEB-436593576168}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{870E33ED-6EE2-470A-8DEB-436593576168}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{870E33ED-6EE2-470A-8DEB-436593576168}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2328735B-D8EC-4449-B46B-50C0378CF8D4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2328735B-D8EC-4449-B46B-50C0378CF8D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2328735B-D8EC-4449-B46B-50C0378CF8D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2328735B-D8EC-4449-B46B-50C0378CF8D4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{101D3184-9F8F-41D7-B886-AF858131B749}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{101D3184-9F8F-41D7-B886-AF858131B749}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{101D3184-9F8F-41D7-B886-AF858131B749}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{101D3184-9F8F-41D7-B886-AF858131B749}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{870E33ED-6EE2-470A-8DEB-436593576168} = {9B5916FE-18FE-4265-9FE3-5FBB8F1DD63E}
+		{2328735B-D8EC-4449-B46B-50C0378CF8D4} = {9B5916FE-18FE-4265-9FE3-5FBB8F1DD63E}
+		{101D3184-9F8F-41D7-B886-AF858131B749} = {9B5916FE-18FE-4265-9FE3-5FBB8F1DD63E}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2D4D8839-C3B5-4514-AB93-474448011786}
+	EndGlobalSection
+EndGlobal

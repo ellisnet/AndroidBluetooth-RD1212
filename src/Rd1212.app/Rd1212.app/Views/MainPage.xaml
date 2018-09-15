@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:Rd1212.app.Views"
+             xmlns:vm="clr-namespace:Rd1212.app.ViewModels"
+             x:Class="Rd1212.app.Views.MainPage"
+             BindingContext="{Binding Source={x:Static vm:DesignTimeViewModelLocator.MainPage}}"
+             Title="{Binding PageTitle}">
+
+    <StackLayout>
+        <!-- Place new controls here -->
+        <Label Text="Welcome to Xamarin.Forms!" 
+           HorizontalOptions="Center"
+           VerticalOptions="CenterAndExpand" />
+    </StackLayout>
+
+</ContentPage>
