@@ -7,11 +7,8 @@
              BindingContext="{Binding Source={x:Static vm:DesignTimeViewModelLocator.MainPage}}"
              Title="{Binding PageTitle}">
 
-    <StackLayout>
-        <!-- Place new controls here -->
-        <Label Text="Welcome to Xamarin.Forms!" 
-           HorizontalOptions="Center"
-           VerticalOptions="CenterAndExpand" />
+    <StackLayout HorizontalOptions="Center" VerticalOptions="Center">
+        <Button HeightRequest="40" WidthRequest="220" Text="{Binding ConnectToDeviceText}" Command="{Binding ConnectToDeviceCommand}"></Button>
     </StackLayout>
 
 </ContentPage>
