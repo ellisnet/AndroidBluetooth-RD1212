@@ -19,7 +19,7 @@ namespace Rd1212.app.ViewModels
 
         #region Bindable properties
 
-        public bool HasConnectableDevice => _detectorDevice != null && (!_detectorDevice.IsConnected);
+        public bool HasConnectableDevice => _detectorDevice != null;
         public bool IsDeviceConnected => _detectorDevice?.IsConnected ?? false;
 
         private bool _isDeviceConnecting;
@@ -29,21 +29,21 @@ namespace Rd1212.app.ViewModels
             set => SetProperty(ref _isDeviceConnecting, value);
         }
 
-        private string _connectToDeviceText = "Connect to device";
-        public string ConnectToDeviceText
-        {
-            get => _connectToDeviceText;
-            set => SetProperty(ref _connectToDeviceText, value);
-        }
+        public string ConnectToDeviceText =>
+            (_detectorDevice == null)
+                ? "Connect to device"
+                : _detectorDevice.IsConnected
+                    ? $"Disconnect from {_detectorDevice.Name}"
+                    : $"Connect to {_detectorDevice.Name}";
 
         #endregion
 
         #region Commands and their implementations
 
-        #region ConnectToDeviceCommand
+        #region ConnectDisconnectDeviceCommand
 
-        private DelegateCommand _connectToDeviceCommand;
-        public DelegateCommand ConnectToDeviceCommand => LazyCommand(ref _connectToDeviceCommand,
+        private DelegateCommand _connectDisconnectDeviceCommand;
+        public DelegateCommand ConnectDisconnectDeviceCommand => LazyCommand(ref _connectDisconnectDeviceCommand,
             async () =>
             {
                 IsDeviceConnecting = true;
@@ -51,24 +51,37 @@ namespace Rd1212.app.ViewModels
                 {
                     if (_detectorDevice == null)
                     {
-                        throw new InvalidOperationException("Couldn't find an available bluetooth device to connect to.");
+                        throw new InvalidOperationException("Couldn't find an available BLE detector device to connect to.");
                     }
-                    await _detectorService.ConnectToDevice(_detectorDevice);
+
+                    if (IsDeviceConnected)
+                    {
+                        await _detectorService.DisconnectDevice(_detectorDevice);
+                    }
+                    else
+                    {
+                        bool connectSuccess = await _detectorService.ConnectToDevice(_detectorDevice);
+                        if (!connectSuccess)
+                        {
+                            await ShowErrorAsync("Unable to connect to device.");
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
-                    await ShowErrorAsync($"Error while connecting: {ex.Message}");
+                    await ShowErrorAsync($"Error while {(IsDeviceConnected ? "disconnecting" : "connecting")}: {ex.Message}");
                 }
                 finally
                 {
                     IsDeviceConnecting = false;
                     NotifyPropertyChanged(nameof(HasConnectableDevice));
                     NotifyPropertyChanged(nameof(IsDeviceConnected));
+                    NotifyPropertyChanged(nameof(ConnectToDeviceText));
                 }
 
                 if (IsDeviceConnected)
                 {
-                    await ShowInfoAsync($"Connected to device -\nSerial Number:\n{_detectorDevice.SerialNumber}");
+                    await ShowInfoAsync($"Connected to detector device -\nSerial Number:\n{_detectorDevice.SerialNumber}");
                 }
             },
             () => (HasConnectableDevice) && (!IsDeviceConnecting))
@@ -96,7 +109,7 @@ namespace Rd1212.app.ViewModels
 
             if (!_hasLocationPermission)
             {
-                await ShowErrorAsync("Unable to search for BLE devices without device location access.");
+                await ShowErrorAsync("Unable to search for BLE detector devices without device location access.");
             }
             else
             {
@@ -104,12 +117,12 @@ namespace Rd1212.app.ViewModels
 
                 if (availableDevices.Count < 1)
                 {
-                    await ShowInfoAsync("No available bluetooth devices.");
+                    await ShowInfoAsync("No available BLE detector devices.");
                 }
                 else
                 {
                     var sb = new StringBuilder();
-                    sb.AppendLine($"{availableDevices.Count} available bluetooth device{(availableDevices.Count > 1 ? "s" : "")} found:");
+                    sb.AppendLine($"{availableDevices.Count} available BLE detector device{(availableDevices.Count > 1 ? "s" : "")} found:");
                     foreach (IDetectorDevice device in availableDevices)
                     {
                         sb.AppendLine($" - {device.Name} - {device.Address}");
@@ -118,8 +131,8 @@ namespace Rd1212.app.ViewModels
                     await ShowInfoAsync(sb.ToString());
 
                     _detectorDevice = availableDevices[0];
-                    ConnectToDeviceText = $"Connect to {_detectorDevice.Name}";
                     NotifyPropertyChanged(nameof(HasConnectableDevice));
+                    NotifyPropertyChanged(nameof(ConnectToDeviceText));
                 }
             }
         }

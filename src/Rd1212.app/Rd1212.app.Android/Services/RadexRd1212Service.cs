@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Android.Bluetooth;
 using Plugin.BLE;
@@ -11,6 +12,7 @@ using Rd1212.app.Droid.Models;
 using Rd1212.app.Models;
 using Rd1212.app.Services;
 using ScanMode = Plugin.BLE.Abstractions.Contracts.ScanMode;
+using Timer = System.Timers.Timer;
 
 namespace Rd1212.app.Droid.Services
 {
@@ -42,6 +44,9 @@ namespace Rd1212.app.Droid.Services
         private static readonly byte CommandIdByte2 = 18;
         private static readonly byte VersionByte = 1;
 
+        private static readonly int MaxRequestRetries = 3;
+        private static readonly int RetryDelayMilliseconds = 1000;
+
         // ReSharper restore InconsistentNaming
 
         private IAdapter _bleAdapter;
@@ -49,13 +54,15 @@ namespace Rd1212.app.Droid.Services
         private readonly object _foundDeviceLocker = new object();
         private readonly List<IDevice> _foundDevices = new List<IDevice>();
         private TaskCompletionSource<bool> _deviceScanCompletion;
-        private TaskCompletionSource<byte[]> _waitForReceivedCompletion;
+        private TaskCompletionSource<byte[]> _waitForResponseCompletion;
 
         private IDevice _connectedDevice;
+        private readonly SemaphoreSlim _connectedDeviceLocker = new SemaphoreSlim(1, 1);
         private IService _dataService;
         private ICharacteristic _dataCharacteristic;
+        private Timer _responseTimeoutTimer;
 
-        #region IDetectorService implementation
+        #region Private methods
 
         private void OnDeviceDiscovered(object sender, DeviceEventArgs args)
         {
@@ -85,7 +92,13 @@ namespace Rd1212.app.Droid.Services
             if (receivedBytes != null)
             {
                 Debug.WriteLine($"===========================Incoming bytes: {BitConverter.ToString(receivedBytes)}");
-                _waitForReceivedCompletion?.TrySetResult(receivedBytes);
+                _responseTimeoutTimer?.Stop();
+                _waitForResponseCompletion?.TrySetResult(receivedBytes);
+            }
+            else
+            {
+                Debug.WriteLine("Received empty byte array.");
+                Debugger.Break(); //see what I got
             }
         }
 
@@ -108,9 +121,9 @@ namespace Rd1212.app.Droid.Services
             _dataService = null;
         }
 
-        private Task<bool> SendRequest(ICharacteristic characteristic, RequestCommand command, byte[] bytesToSend = null)
+        private Task<bool> SendRequest(ICharacteristic characteristic, RequestCommand command, byte[] bytesToSend = null, int? responseTimeoutMilliseconds = null)
         {
-            if (characteristic == null) { throw new ArgumentNullException(nameof(characteristic));}
+            if (characteristic == null) { throw new ArgumentNullException(nameof(characteristic)); }
             var output = new byte[14];
             output[0] = CommandIdByte1;
             output[1] = CommandIdByte2;
@@ -119,8 +132,18 @@ namespace Rd1212.app.Droid.Services
 
             if (bytesToSend != null && bytesToSend.Any())
             {
-                if (bytesToSend.Length > 10) { throw new ArgumentException("Only able to send 10 bytes max.", nameof(bytesToSend));}
+                if (bytesToSend.Length > 10) { throw new ArgumentException("Only able to send 10 bytes max.", nameof(bytesToSend)); }
                 Buffer.BlockCopy(bytesToSend, 0, output, 4, bytesToSend.Length);
+            }
+
+            if (responseTimeoutMilliseconds.HasValue && responseTimeoutMilliseconds.Value > 0)
+            {
+                _responseTimeoutTimer = new Timer(responseTimeoutMilliseconds.Value) {AutoReset = false};
+                _responseTimeoutTimer.Elapsed += (sender, args) =>
+                {
+                    _waitForResponseCompletion?.TrySetResult(null);
+                };
+                _responseTimeoutTimer.Start();
             }
 
             return characteristic.WriteAsync(output);
@@ -128,10 +151,14 @@ namespace Rd1212.app.Droid.Services
 
         private string ParseSerialNumber(byte[] receivedBytes)
         {
-            if (receivedBytes == null) { throw new ArgumentNullException(nameof(receivedBytes));}
-            if (receivedBytes.Length < 7) { throw new ArgumentException("Unable to parse serial number - not enough bytes.", nameof(receivedBytes));}
+            if (receivedBytes == null) { throw new ArgumentNullException(nameof(receivedBytes)); }
+            if (receivedBytes.Length < 7) { throw new ArgumentException("Unable to parse serial number - not enough bytes.", nameof(receivedBytes)); }
             return BitConverter.ToString(receivedBytes, 0, 7).Replace("-", "");
         }
+
+        #endregion
+
+        #region IDetectorService implementation
 
         public async Task<IList<IDetectorDevice>> FindAvailableDevices(int scanTimeMilliseconds = 10000)
         {
@@ -174,10 +201,11 @@ namespace Rd1212.app.Droid.Services
 
             if (!result)
             {
-                await CleanupDataService();
+                await _connectedDeviceLocker.WaitAsync();
 
                 try
                 {
+                    await CleanupDataService();
                     await _bleAdapter.ConnectToDeviceAsync(bleDevice);
 
                     _dataService = await bleDevice.GetServiceAsync(DataServiceId);
@@ -201,33 +229,85 @@ namespace Rd1212.app.Droid.Services
                         throw new Exception("Unable to find the specified GATT Descriptor.");
                     }
 
+                    Debug.WriteLine("Enabling BLE data service on device.");
                     await clientConfig.WriteAsync(EnableProtocolCommand);
 
-                    await Task.Delay(500); //Short delay before requesting serial number
+                    await Task.Delay(1000); //Short delay before requesting serial number
 
-                    _waitForReceivedCompletion = new TaskCompletionSource<byte[]>();
-                    await SendRequest(_dataCharacteristic, RequestCommand.DeviceSerialNumber);
+                    Debug.WriteLine("Requesting device serial number.");
+                    _waitForResponseCompletion = new TaskCompletionSource<byte[]>();
+                    await SendRequest(_dataCharacteristic, RequestCommand.DeviceSerialNumber, null, 2000);
+                    byte[] serialNumberBytes = await _waitForResponseCompletion.Task;
 
-                    byte[] serialNumberBytes = await _waitForReceivedCompletion.Task;
+                    if (serialNumberBytes == null)
+                    {
+                        int retry = 0;
+                        do
+                        {
+                            await Task.Delay(RetryDelayMilliseconds);
+                            retry++;
+                            Debug.WriteLine($"Retrying request - attempt #{retry}...");
+                            _waitForResponseCompletion = new TaskCompletionSource<byte[]>();
+                            await SendRequest(_dataCharacteristic, RequestCommand.DeviceSerialNumber, null, 2000);
+                            serialNumberBytes = await _waitForResponseCompletion.Task;
+                        } while (serialNumberBytes == null && retry < MaxRequestRetries);
+                    }
 
-                    rd1212.SerialNumber = ParseSerialNumber(serialNumberBytes);
+                    if (serialNumberBytes != null)
+                    {
+                        rd1212.SerialNumber = ParseSerialNumber(serialNumberBytes);
 
-                    _connectedDevice = bleDevice;
-                    result = rd1212.IsConnected = true;
+                        _connectedDevice = bleDevice;
+                        result = rd1212.IsConnected = true;
+                    }
+                    else
+                    {
+                        await CleanupDataService();
+                        await _bleAdapter.DisconnectDeviceAsync(bleDevice);
+                        _connectedDevice = null;
+                        rd1212.IsConnected = false;
+                    }
                 }
                 catch (Exception e)
                 {
                     Debug.WriteLine(e.ToString());
                     Debugger.Break();
                 }
+                finally
+                {
+                    _connectedDeviceLocker.Release();
+                }
             }
 
             return result;
         }
 
-        public void DisconnectDevice(IDetectorDevice device)
+        public async Task DisconnectDevice(IDetectorDevice device)
         {
-            //Nothing here yet
+            if (device == null) { throw new ArgumentNullException(nameof(device)); }
+
+            await _connectedDeviceLocker.WaitAsync();
+
+            try
+            {
+                IDevice bleDevice = (device as Rd1212DetectorDevice)?.BleDevice;
+                if (device.IsConnected && bleDevice != null && _connectedDevice != null && bleDevice.Id.Equals(_connectedDevice.Id))
+                {
+
+                    await CleanupDataService();
+                    await _bleAdapter.DisconnectDeviceAsync(_connectedDevice);
+                    _connectedDevice = null;
+                    ((Rd1212DetectorDevice)device).IsConnected = false;
+                }
+            }
+            catch (Exception)
+            {
+                //Nothing to do here, couldn't disconnect
+            }
+            finally
+            {
+                _connectedDeviceLocker.Release();
+            }
         }
 
         #endregion
@@ -252,10 +332,39 @@ namespace Rd1212.app.Droid.Services
             if (!IsDisposed)
             {
                 IsDisposed = true;
-                _dataCharacteristic = null;
-                _dataService?.Dispose();
-                _dataService = null;
-                _bleAdapter = null;
+
+                if (_connectedDevice != null)
+                {
+                    //Disconnecting device as a fire-and-forget task
+                    new Task(async () =>
+                    {
+                        await _connectedDeviceLocker.WaitAsync();
+
+                        try
+                        {
+                            await CleanupDataService();
+                            await _bleAdapter.DisconnectDeviceAsync(_connectedDevice);
+                            _connectedDevice = null;
+                            _bleAdapter = null;
+                        }
+                        catch (Exception)
+                        {
+                            //Nothing to do here, couldn't disconnect
+                        }
+                        finally
+                        {
+                            _connectedDeviceLocker.Release();
+                        }
+                    }).Start();
+                }
+                else
+                {
+                    _dataCharacteristic = null;
+                    _dataService?.Dispose();
+                    _dataService = null;
+                    _bleAdapter = null;
+                }
+
                 _ble = null;
             }
         }

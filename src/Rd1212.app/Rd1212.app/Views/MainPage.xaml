@@ -8,7 +8,7 @@
              Title="{Binding PageTitle}">
 
     <StackLayout HorizontalOptions="Center" VerticalOptions="Center">
-        <Button HeightRequest="40" WidthRequest="220" Text="{Binding ConnectToDeviceText}" Command="{Binding ConnectToDeviceCommand}"></Button>
+        <Button HeightRequest="40" WidthRequest="240" Text="{Binding ConnectToDeviceText}" Command="{Binding ConnectDisconnectDeviceCommand}"></Button>
     </StackLayout>
 
 </ContentPage>

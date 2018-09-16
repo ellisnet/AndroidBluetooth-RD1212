@@ -9,6 +9,6 @@ namespace Rd1212.app.Services
     {
         Task<IList<IDetectorDevice>> FindAvailableDevices(int scanTimeMilliseconds = 10000);
         Task<bool> ConnectToDevice(IDetectorDevice device);
-        void DisconnectDevice(IDetectorDevice device);
+        Task DisconnectDevice(IDetectorDevice device);
     }
 }
